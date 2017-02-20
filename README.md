@@ -1,0 +1,1 @@
+# azure-table-storage-repo
