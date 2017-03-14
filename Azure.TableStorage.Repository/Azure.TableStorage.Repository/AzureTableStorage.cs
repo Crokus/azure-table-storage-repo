@@ -8,8 +8,7 @@ namespace Wolnik.Azure.TableStorage.Repository
     public class AzureTableStorage : ITableStorage
     {
         private readonly CloudTableClient _client;
-        private bool _tableExits;
-        private CloudTable _table;
+        private IDictionary<string, CloudTable> _tables;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AzureTableStorage" /> class.
@@ -19,6 +18,8 @@ namespace Wolnik.Azure.TableStorage.Repository
         {
             CloudStorageAccount account = CloudStorageAccount.Parse(connectionString);
             _client = account.CreateCloudTableClient();
+
+            _tables = new Dictionary<string, CloudTable>();
         }
 
         /// <summary>
@@ -31,24 +32,24 @@ namespace Wolnik.Azure.TableStorage.Repository
         /// <returns></returns>
         public async Task<T> GetAsync<T>(string tableName, string partitionKey, string rowKey) where T : class, ITableEntity
         {
-            await EnsureTable(tableName);
+            var table = await EnsureTable(tableName);
 
             TableOperation retrieveOperation = TableOperation.Retrieve<T>(partitionKey, rowKey);
 
-            TableResult result = await _table.ExecuteAsync(retrieveOperation);
+            TableResult result = await table.ExecuteAsync(retrieveOperation);
 
             return result.Result as T;
         }
 
         public async Task<IEnumerable<T>> GetAllAsync<T>(string tableName) where T : class, ITableEntity, new()
         {
-            await EnsureTable(tableName);
+            var table = await EnsureTable(tableName);
 
             TableContinuationToken token = null;
             var entities = new List<T>();
             do
             {
-                var queryResult = await _table.ExecuteQuerySegmentedAsync(new TableQuery<T>(), token);
+                var queryResult = await table.ExecuteQuerySegmentedAsync(new TableQuery<T>(), token);
                 entities.AddRange(queryResult.Results);
                 token = queryResult.ContinuationToken;
             } while (token != null);
@@ -63,13 +64,13 @@ namespace Wolnik.Azure.TableStorage.Repository
         /// <returns></returns>
         public async Task<IEnumerable<T>> QueryAsync<T>(string tableName, TableQuery<T> query) where T : class, ITableEntity, new()
         {
-            await EnsureTable(tableName);
+            var table = await EnsureTable(tableName);
 
             TableContinuationToken token = null;
             var entities = new List<T>();
             do
             {
-                var queryResult = await _table.ExecuteQuerySegmentedAsync(query, token);
+                var queryResult = await table.ExecuteQuerySegmentedAsync(query, token);
                 entities.AddRange(queryResult.Results);
                 token = queryResult.ContinuationToken;
             } while (token != null);
@@ -85,11 +86,11 @@ namespace Wolnik.Azure.TableStorage.Repository
         /// <returns></returns>
         public async Task<object> AddOrUpdateAsync(string tableName, ITableEntity entity)
         {
-            await EnsureTable(tableName);
+            var table = await EnsureTable(tableName);
 
             TableOperation insertOrReplaceOperation = TableOperation.InsertOrReplace(entity);
 
-            TableResult result = await _table.ExecuteAsync(insertOrReplaceOperation);
+            TableResult result = await table.ExecuteAsync(insertOrReplaceOperation);
 
             return result.Result;
         }
@@ -102,11 +103,11 @@ namespace Wolnik.Azure.TableStorage.Repository
         /// <returns></returns>
         public async Task<object> DeleteAsync(string tableName, ITableEntity entity)
         {
-            await EnsureTable(tableName);
+            var table = await EnsureTable(tableName);
 
             TableOperation deleteOperation = TableOperation.Delete(entity);
 
-            TableResult result = await _table.ExecuteAsync(deleteOperation);
+            TableResult result = await table.ExecuteAsync(deleteOperation);
 
             return result.Result;
         }
@@ -114,14 +115,16 @@ namespace Wolnik.Azure.TableStorage.Repository
         /// <summary>
         /// Ensures existance of the table.
         /// </summary>
-        private async Task EnsureTable(string tableName)
+        private async Task<CloudTable> EnsureTable(string tableName)
         {
-            if (!_tableExits)
+            if (!_tables.ContainsKey(tableName))
             {
-                _table = _client.GetTableReference(tableName);
-                await _table.CreateIfNotExistsAsync();
-                _tableExits = true;
+                var table = _client.GetTableReference(tableName);
+                await table.CreateIfNotExistsAsync();
+                _tables[tableName] = table;
             }
+
+            return _tables[tableName];
         }
     }
 }
