@@ -113,6 +113,40 @@ namespace Wolnik.Azure.TableStorage.Repository
         }
 
         /// <summary>
+        /// Add the entity.
+        /// </summary>
+        /// <param name="tableName">Name of the table.</param>
+        /// <param name="entity">The entity.</param>
+        /// <returns></returns>
+        public async Task<object> AddAsync(string tableName, ITableEntity entity)
+        {
+            var table = await EnsureTable(tableName);
+
+            TableOperation insertOperation = TableOperation.Insert(entity);
+
+            TableResult result = await table.ExecuteAsync(insertOperation);
+
+            return result.Result;
+        }
+
+        /// <summary>
+        /// Updates the entity.
+        /// </summary>
+        /// <param name="tableName">Name of the table.</param>
+        /// <param name="entity">The entity.</param>
+        /// <returns></returns>
+        public async Task<object> UpdateAsync(string tableName, ITableEntity entity)
+        {
+            var table = await EnsureTable(tableName);
+
+            TableOperation replaceOperation = TableOperation.Replace(entity);
+
+            TableResult result = await table.ExecuteAsync(replaceOperation);
+
+            return result.Result;
+        }
+
+        /// <summary>
         /// Ensures existance of the table.
         /// </summary>
         private async Task<CloudTable> EnsureTable(string tableName)
