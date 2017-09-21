@@ -12,6 +12,7 @@ namespace Wolnik.Azure.TableStorage.Repository
         Task<object> AddOrUpdateAsync(string tableName, ITableEntity entity);
         Task<object> DeleteAsync(string tableName, ITableEntity entity);
         Task<object> AddAsync(string tableName, ITableEntity entity);
+        Task<object> AddBatchAsync(string tableName, IEnumerable<ITableEntity> entities);
         Task<object> UpdateAsync(string tableName, ITableEntity entity);
 
     }

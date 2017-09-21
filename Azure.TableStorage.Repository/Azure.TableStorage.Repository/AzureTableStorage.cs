@@ -1,6 +1,8 @@
-﻿using Microsoft.WindowsAzure.Storage;
+﻿using System.Collections;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Wolnik.Azure.TableStorage.Repository
@@ -127,6 +129,27 @@ namespace Wolnik.Azure.TableStorage.Repository
             TableResult result = await table.ExecuteAsync(insertOperation);
 
             return result.Result;
+        }
+
+        /// <summary>
+        /// Insert a batch of entities.
+        /// </summary>
+        /// <param name="tableName">Name of the table.</param>
+        /// <param name="entities">Collection of entities.</param>
+        /// <returns></returns>
+        public async Task<object> AddBatchAsync(string tableName, IEnumerable<ITableEntity> entities)
+        {
+            var table = await EnsureTable(tableName);
+
+            TableBatchOperation batchOperation = new TableBatchOperation();
+            foreach (var tableEntity in entities)
+            {
+                batchOperation.Insert(tableEntity);
+            }
+
+            IEnumerable<TableResult> results = await table.ExecuteBatchAsync(batchOperation);
+
+            return results.Select(result => result.Result);
         }
 
         /// <summary>
