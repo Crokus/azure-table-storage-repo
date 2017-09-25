@@ -142,9 +142,9 @@ namespace Wolnik.Azure.TableStorage.Repository
             var table = await EnsureTable(tableName);
 
             TableBatchOperation batchOperation = new TableBatchOperation();
-            foreach (var tableEntity in entities)
+            foreach (var entity in entities)
             {
-                batchOperation.Insert(tableEntity);
+                batchOperation.Insert(entity);
             }
 
             IEnumerable<TableResult> results = await table.ExecuteBatchAsync(batchOperation);
