@@ -143,7 +143,6 @@ namespace Wolnik.Azure.TableStorage.Repository
             var tasks = new List<Task<IList<TableResult>>>();
 
             var entitiesOffset = 0;
-
             while (entitiesOffset < entities?.Count())
             {
                 var entitiesToAdd = entities.Skip(entitiesOffset).Take(100).ToList();
