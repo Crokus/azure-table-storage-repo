@@ -131,24 +131,35 @@ namespace Wolnik.Azure.TableStorage.Repository
         }
 
         /// <summary>
-        /// Insert a batch of entities.
+        /// Insert a batch of entities. Support adding more than 100 entities.
         /// </summary>
         /// <param name="tableName">Name of the table.</param>
         /// <param name="entities">Collection of entities.</param>
         /// <returns></returns>
-        public async Task<object> AddBatchAsync(string tableName, IEnumerable<ITableEntity> entities)
+        public async Task<IEnumerable<T>> AddBatchAsync<T>(string tableName, IEnumerable<ITableEntity> entities) where T : class, ITableEntity, new()
         {
             var table = await EnsureTable(tableName);
 
-            TableBatchOperation batchOperation = new TableBatchOperation();
-            foreach (var entity in entities)
+            var tasks = new List<Task<IList<TableResult>>>();
+
+            var entitiesOffset = 0;
+
+            while (entitiesOffset < entities?.Count())
             {
-                batchOperation.Insert(entity);
+                var entitiesToAdd = entities.Skip(entitiesOffset).Take(100).ToList();
+                entitiesOffset += entitiesToAdd.Count;
+
+                TableBatchOperation batchOperation = new TableBatchOperation();
+                foreach (var entity in entitiesToAdd)
+                {
+                    batchOperation.Insert(entity);
+                }
+                tasks.Add(table.ExecuteBatchAsync(batchOperation));
             }
 
-            IEnumerable<TableResult> results = await table.ExecuteBatchAsync(batchOperation);
+            var results = await Task.WhenAll(tasks);
 
-            return results.Select(result => result.Result);
+            return results.SelectMany(tableResults => tableResults, (tr, r) => r.Result as T);
         }
 
         /// <summary>
