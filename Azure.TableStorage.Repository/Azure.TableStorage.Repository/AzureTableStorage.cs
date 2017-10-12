@@ -1,4 +1,5 @@
-﻿using Microsoft.WindowsAzure.Storage;
+﻿using System;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using System.Collections.Generic;
 using System.Linq;
@@ -135,10 +136,13 @@ namespace Wolnik.Azure.TableStorage.Repository
         /// </summary>
         /// <param name="tableName">Name of the table.</param>
         /// <param name="entities">Collection of entities.</param>
+        /// <param name="options">Batch operation options</param>
         /// <returns></returns>
-        public async Task<IEnumerable<T>> AddBatchAsync<T>(string tableName, IEnumerable<ITableEntity> entities) where T : class, ITableEntity, new()
+        public async Task<IEnumerable<T>> AddBatchAsync<T>(string tableName, IEnumerable<ITableEntity> entities, BatchOperationOptions options = null) where T : class, ITableEntity, new()
         {
             var table = await EnsureTable(tableName);
+
+            options = options ?? new BatchOperationOptions();
 
             var tasks = new List<Task<IList<TableResult>>>();
 
@@ -148,10 +152,23 @@ namespace Wolnik.Azure.TableStorage.Repository
                 var entitiesToAdd = entities.Skip(entitiesOffset).Take(100).ToList();
                 entitiesOffset += entitiesToAdd.Count;
 
+                Action<TableBatchOperation, ITableEntity> batchInsertOperation = null;
+                switch (options.BatchInsertMethod)
+                {
+                    case BatchInsertMethod.Insert:
+                        batchInsertOperation = (bo, entity) => bo.Insert(entity);
+                        break;
+                    case BatchInsertMethod.InsertOrReplace:
+                        batchInsertOperation = (bo, entity) => bo.InsertOrReplace(entity);
+                        break;
+                    case BatchInsertMethod.InsertOrMerge:
+                        batchInsertOperation = (bo, entity) => bo.InsertOrMerge(entity);
+                        break;
+                }
                 TableBatchOperation batchOperation = new TableBatchOperation();
                 foreach (var entity in entitiesToAdd)
                 {
-                    batchOperation.Insert(entity);
+                    batchInsertOperation(batchOperation, entity);
                 }
                 tasks.Add(table.ExecuteBatchAsync(batchOperation));
             }
