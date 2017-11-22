@@ -60,7 +60,8 @@ namespace Wolnik.Azure.TableStorage.Repository
         }
 
         /// <summary>
-        /// Gets entities by query
+        /// Gets entities by query. 
+        /// Supports TakeCount parameter.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
@@ -68,14 +69,17 @@ namespace Wolnik.Azure.TableStorage.Repository
         {
             var table = await EnsureTable(tableName);
 
-            TableContinuationToken token = null;
             var entities = new List<T>();
-            do
+
+            bool shouldConsiderTakeCount = query.TakeCount.HasValue;
+            if (shouldConsiderTakeCount)
             {
-                var queryResult = await table.ExecuteQuerySegmentedAsync(query, token);
-                entities.AddRange(queryResult.Results);
-                token = queryResult.ContinuationToken;
-            } while (token != null);
+                await QueryAsyncWithTakeCount(query, table, entities);
+            }
+            else
+            {
+                await QueryAsync(query, table, entities);
+            }
 
             return entities;
         }
@@ -146,10 +150,11 @@ namespace Wolnik.Azure.TableStorage.Repository
 
             var tasks = new List<Task<IList<TableResult>>>();
 
+            const int addBatchOperationLimit = 100;
             var entitiesOffset = 0;
             while (entitiesOffset < entities?.Count())
             {
-                var entitiesToAdd = entities.Skip(entitiesOffset).Take(100).ToList();
+                var entitiesToAdd = entities.Skip(entitiesOffset).Take(addBatchOperationLimit).ToList();
                 entitiesOffset += entitiesToAdd.Count;
 
                 Action<TableBatchOperation, ITableEntity> batchInsertOperation = null;
@@ -208,6 +213,57 @@ namespace Wolnik.Azure.TableStorage.Repository
             }
 
             return _tables[tableName];
+        }
+
+        /// <summary>
+        /// Gets entities by query
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="query"></param>
+        /// <param name="table"></param>
+        /// <param name="entities"></param>
+        /// <returns></returns>
+        private async Task QueryAsync<T>(TableQuery<T> query, CloudTable table, List<T> entities)
+            where T : class, ITableEntity, new()
+        {
+            TableContinuationToken token = null;
+            do
+            {
+                var queryResult = await table.ExecuteQuerySegmentedAsync(query, token);
+                entities.AddRange(queryResult.Results);
+                token = queryResult.ContinuationToken;
+
+            } while (token != null);
+        }
+
+        /// <summary>
+        /// Get entities by query with TakeCount parameter
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="query"></param>
+        /// <param name="table"></param>
+        /// <param name="entities"></param>
+        /// <returns></returns>
+        private async Task QueryAsyncWithTakeCount<T>(TableQuery<T> query, CloudTable table, List<T> entities)
+            where T : class, ITableEntity, new()
+        {
+            const int maxEntitiesPerQueryLimit = 1000;
+            var totalTakeCount = query.TakeCount;
+            var remainingRecordsToTake = query.TakeCount;
+
+            TableContinuationToken token = null;
+            do
+            {
+                query.TakeCount = remainingRecordsToTake >= maxEntitiesPerQueryLimit ?
+                    maxEntitiesPerQueryLimit :
+                    remainingRecordsToTake % maxEntitiesPerQueryLimit;
+                remainingRecordsToTake -= query.TakeCount;
+
+                var queryResult = await table.ExecuteQuerySegmentedAsync(query, token);
+                entities.AddRange(queryResult.Results);
+                token = queryResult.ContinuationToken;
+
+            } while (entities.Count < totalTakeCount && token != null);
         }
     }
 }
