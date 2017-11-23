@@ -69,19 +69,9 @@ namespace Wolnik.Azure.TableStorage.Repository
         {
             var table = await EnsureTable(tableName);
 
-            var entities = new List<T>();
-
             bool shouldConsiderTakeCount = query.TakeCount.HasValue;
-            if (shouldConsiderTakeCount)
-            {
-                await QueryAsyncWithTakeCount(query, table, entities);
-            }
-            else
-            {
-                await QueryAsync(query, table, entities);
-            }
 
-            return entities;
+            return shouldConsiderTakeCount ? await QueryAsyncWithTakeCount(table, query) : await QueryAsync(table, query);
         }
 
         /// <summary>
@@ -219,21 +209,23 @@ namespace Wolnik.Azure.TableStorage.Repository
         /// Gets entities by query
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="query"></param>
         /// <param name="table"></param>
-        /// <param name="entities"></param>
+        /// <param name="query"></param>
         /// <returns></returns>
-        private async Task QueryAsync<T>(TableQuery<T> query, CloudTable table, List<T> entities)
+        private async Task<IEnumerable<T>> QueryAsync<T>(CloudTable table, TableQuery<T> query)
             where T : class, ITableEntity, new()
         {
+            var entities = new List<T>();
+
             TableContinuationToken token = null;
             do
             {
                 var queryResult = await table.ExecuteQuerySegmentedAsync(query, token);
                 entities.AddRange(queryResult.Results);
                 token = queryResult.ContinuationToken;
-
             } while (token != null);
+
+            return entities;
         }
 
         /// <summary>
@@ -242,11 +234,12 @@ namespace Wolnik.Azure.TableStorage.Repository
         /// <typeparam name="T"></typeparam>
         /// <param name="query"></param>
         /// <param name="table"></param>
-        /// <param name="entities"></param>
         /// <returns></returns>
-        private async Task QueryAsyncWithTakeCount<T>(TableQuery<T> query, CloudTable table, List<T> entities)
+        private async Task<IEnumerable<T>> QueryAsyncWithTakeCount<T>(CloudTable table, TableQuery<T> query)
             where T : class, ITableEntity, new()
         {
+            var entities = new List<T>();
+
             const int maxEntitiesPerQueryLimit = 1000;
             var totalTakeCount = query.TakeCount;
             var remainingRecordsToTake = query.TakeCount;
@@ -254,16 +247,15 @@ namespace Wolnik.Azure.TableStorage.Repository
             TableContinuationToken token = null;
             do
             {
-                query.TakeCount = remainingRecordsToTake >= maxEntitiesPerQueryLimit ?
-                    maxEntitiesPerQueryLimit :
-                    remainingRecordsToTake % maxEntitiesPerQueryLimit;
+                query.TakeCount = remainingRecordsToTake >= maxEntitiesPerQueryLimit ? maxEntitiesPerQueryLimit : remainingRecordsToTake;
                 remainingRecordsToTake -= query.TakeCount;
 
                 var queryResult = await table.ExecuteQuerySegmentedAsync(query, token);
                 entities.AddRange(queryResult.Results);
                 token = queryResult.ContinuationToken;
-
             } while (entities.Count < totalTakeCount && token != null);
+
+            return entities;
         }
     }
 }
