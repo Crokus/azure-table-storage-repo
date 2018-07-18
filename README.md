@@ -8,7 +8,7 @@ Simple repository pattern for [Azure Table Storage](https://azure.microsoft.com/
 
 # Installation
 
-Use NuGet to install the [package](https://www.nuget.org/packages/Azure.TableStorage.Repository/1.0.6).
+Use NuGet to install the [package](https://www.nuget.org/packages/Azure.TableStorage.Repository/).
 
 ```
 PM> Install-Package Azure.TableStorage.Repository
