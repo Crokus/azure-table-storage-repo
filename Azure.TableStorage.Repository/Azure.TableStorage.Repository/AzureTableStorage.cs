@@ -34,24 +34,24 @@ namespace Wolnik.Azure.TableStorage.Repository
         /// <returns></returns>
         public async Task<T> GetAsync<T>(string tableName, string partitionKey, string rowKey) where T : class, ITableEntity
         {
-            var table = await EnsureTable(tableName);
+            var table = await EnsureTable(tableName).ConfigureAwait(false);
 
             TableOperation retrieveOperation = TableOperation.Retrieve<T>(partitionKey, rowKey);
 
-            TableResult result = await table.ExecuteAsync(retrieveOperation);
+            TableResult result = await table.ExecuteAsync(retrieveOperation).ConfigureAwait(false);
 
             return result.Result as T;
         }
 
         public async Task<IEnumerable<T>> GetAllAsync<T>(string tableName) where T : class, ITableEntity, new()
         {
-            var table = await EnsureTable(tableName);
+            var table = await EnsureTable(tableName).ConfigureAwait(false);
 
             TableContinuationToken token = null;
             var entities = new List<T>();
             do
             {
-                var queryResult = await table.ExecuteQuerySegmentedAsync(new TableQuery<T>(), token);
+                var queryResult = await table.ExecuteQuerySegmentedAsync(new TableQuery<T>(), token).ConfigureAwait(false);
                 entities.AddRange(queryResult.Results);
                 token = queryResult.ContinuationToken;
             } while (token != null);
@@ -67,11 +67,13 @@ namespace Wolnik.Azure.TableStorage.Repository
         /// <returns></returns>
         public async Task<IEnumerable<T>> QueryAsync<T>(string tableName, TableQuery<T> query) where T : class, ITableEntity, new()
         {
-            var table = await EnsureTable(tableName);
+            var table = await EnsureTable(tableName).ConfigureAwait(false);
 
             bool shouldConsiderTakeCount = query.TakeCount.HasValue;
 
-            return shouldConsiderTakeCount ? await QueryAsyncWithTakeCount(table, query) : await QueryAsync(table, query);
+            return shouldConsiderTakeCount ? 
+                await QueryAsyncWithTakeCount(table, query).ConfigureAwait(false) : 
+                await QueryAsync(table, query).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -82,11 +84,11 @@ namespace Wolnik.Azure.TableStorage.Repository
         /// <returns></returns>
         public async Task<object> AddOrUpdateAsync(string tableName, ITableEntity entity)
         {
-            var table = await EnsureTable(tableName);
+            var table = await EnsureTable(tableName).ConfigureAwait(false);
 
             TableOperation insertOrReplaceOperation = TableOperation.InsertOrReplace(entity);
 
-            TableResult result = await table.ExecuteAsync(insertOrReplaceOperation);
+            TableResult result = await table.ExecuteAsync(insertOrReplaceOperation).ConfigureAwait(false);
 
             return result.Result;
         }
@@ -99,11 +101,11 @@ namespace Wolnik.Azure.TableStorage.Repository
         /// <returns></returns>
         public async Task<object> DeleteAsync(string tableName, ITableEntity entity)
         {
-            var table = await EnsureTable(tableName);
+            var table = await EnsureTable(tableName).ConfigureAwait(false);
 
             TableOperation deleteOperation = TableOperation.Delete(entity);
 
-            TableResult result = await table.ExecuteAsync(deleteOperation);
+            TableResult result = await table.ExecuteAsync(deleteOperation).ConfigureAwait(false);
 
             return result.Result;
         }
@@ -116,11 +118,11 @@ namespace Wolnik.Azure.TableStorage.Repository
         /// <returns></returns>
         public async Task<object> AddAsync(string tableName, ITableEntity entity)
         {
-            var table = await EnsureTable(tableName);
+            var table = await EnsureTable(tableName).ConfigureAwait(false);
 
             TableOperation insertOperation = TableOperation.Insert(entity);
 
-            TableResult result = await table.ExecuteAsync(insertOperation);
+            TableResult result = await table.ExecuteAsync(insertOperation).ConfigureAwait(false);
 
             return result.Result;
         }
@@ -134,7 +136,7 @@ namespace Wolnik.Azure.TableStorage.Repository
         /// <returns></returns>
         public async Task<IEnumerable<T>> AddBatchAsync<T>(string tableName, IEnumerable<ITableEntity> entities, BatchOperationOptions options = null) where T : class, ITableEntity, new()
         {
-            var table = await EnsureTable(tableName);
+            var table = await EnsureTable(tableName).ConfigureAwait(false);
 
             options = options ?? new BatchOperationOptions();
 
@@ -168,7 +170,7 @@ namespace Wolnik.Azure.TableStorage.Repository
                 tasks.Add(table.ExecuteBatchAsync(batchOperation));
             }
 
-            var results = await Task.WhenAll(tasks);
+            var results = await Task.WhenAll(tasks).ConfigureAwait(false);
 
             return results.SelectMany(tableResults => tableResults, (tr, r) => r.Result as T);
         }
@@ -181,11 +183,11 @@ namespace Wolnik.Azure.TableStorage.Repository
         /// <returns></returns>
         public async Task<object> UpdateAsync(string tableName, ITableEntity entity)
         {
-            var table = await EnsureTable(tableName);
+            var table = await EnsureTable(tableName).ConfigureAwait(false);
 
             TableOperation replaceOperation = TableOperation.Replace(entity);
 
-            TableResult result = await table.ExecuteAsync(replaceOperation);
+            TableResult result = await table.ExecuteAsync(replaceOperation).ConfigureAwait(false);
 
             return result.Result;
         }
@@ -198,7 +200,7 @@ namespace Wolnik.Azure.TableStorage.Repository
             if (!_tables.ContainsKey(tableName))
             {
                 var table = _client.GetTableReference(tableName);
-                await table.CreateIfNotExistsAsync();
+                await table.CreateIfNotExistsAsync().ConfigureAwait(false);
                 _tables[tableName] = table;
             }
 
@@ -220,7 +222,7 @@ namespace Wolnik.Azure.TableStorage.Repository
             TableContinuationToken token = null;
             do
             {
-                var queryResult = await table.ExecuteQuerySegmentedAsync(query, token);
+                var queryResult = await table.ExecuteQuerySegmentedAsync(query, token).ConfigureAwait(false);
                 entities.AddRange(queryResult.Results);
                 token = queryResult.ContinuationToken;
             } while (token != null);
@@ -250,7 +252,7 @@ namespace Wolnik.Azure.TableStorage.Repository
                 query.TakeCount = remainingRecordsToTake >= maxEntitiesPerQueryLimit ? maxEntitiesPerQueryLimit : remainingRecordsToTake;
                 remainingRecordsToTake -= query.TakeCount;
 
-                var queryResult = await table.ExecuteQuerySegmentedAsync(query, token);
+                var queryResult = await table.ExecuteQuerySegmentedAsync(query, token).ConfigureAwait(false);
                 entities.AddRange(queryResult.Results);
                 token = queryResult.ContinuationToken;
             } while (entities.Count < totalTakeCount && token != null);
