@@ -12,3 +12,7 @@ Use NuGet to install the [package](https://www.nuget.org/packages/Azure.TableSto
 ```
 PM> Install-Package Azure.TableStorage.Repository
 ```
+
+# Contributing
+
+Please check out the [contributing page](https://github.com/Crokus/azure-table-storage-repo/blob/master/CONTRIBUTING.md).
