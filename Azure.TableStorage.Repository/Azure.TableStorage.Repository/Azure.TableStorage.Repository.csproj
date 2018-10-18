@@ -5,7 +5,7 @@
     <AssemblyName>Wolnik.Azure.TableStorage.Repository</AssemblyName>
     <RootNamespace>Wolnik.Azure.TableStorage.Repository</RootNamespace>
     <PackageId>Azure.TableStorage.Repository</PackageId>
-    <Version>1.0.6</Version>
+    <Version>2.0.8</Version>
     <Authors>Marcin Wolnik</Authors>
     <Company>Marcin Wolnik</Company>
     <Product>Azure.TableStorage.Repository</Product>
@@ -20,7 +20,7 @@
 
   <ItemGroup>
     <PackageReference Include="System.Linq.Queryable" Version="4.3.0" />
-    <PackageReference Include="WindowsAzure.Storage" Version="9.3.0" />
+    <PackageReference Include="WindowsAzure.Storage" Version="9.3.2" />
   </ItemGroup>
 
 </Project>

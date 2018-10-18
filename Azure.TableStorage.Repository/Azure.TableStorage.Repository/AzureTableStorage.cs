@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using System.Collections.Generic;
@@ -10,7 +11,7 @@ namespace Wolnik.Azure.TableStorage.Repository
     public class AzureTableStorage : ITableStorage
     {
         private readonly CloudTableClient _client;
-        private IDictionary<string, CloudTable> _tables;
+        private ConcurrentDictionary<string, CloudTable> _tables;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AzureTableStorage" /> class.
@@ -21,7 +22,7 @@ namespace Wolnik.Azure.TableStorage.Repository
             CloudStorageAccount account = CloudStorageAccount.Parse(connectionString);
             _client = account.CreateCloudTableClient();
 
-            _tables = new Dictionary<string, CloudTable>();
+            _tables = new ConcurrentDictionary<string, CloudTable>();
         }
 
         /// <summary>
@@ -193,7 +194,7 @@ namespace Wolnik.Azure.TableStorage.Repository
         }
 
         /// <summary>
-        /// Ensures existance of the table.
+        /// Ensures existence of the table.
         /// </summary>
         private async Task<CloudTable> EnsureTable(string tableName)
         {
